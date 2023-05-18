@@ -70,12 +70,12 @@ def filter_points(ego, points):
   filtered_points = []
   for point in points:
       distance = calculate_distance(ego, point)
-      if distance <= 25:
+      if distance <= 25: # ego at center, so the resolution should be 256/50
           filtered_points.append(point)
   return filtered_points
 
 def draw_line(line, color=None, reference_line=False, label=""):
-  #
+  # key points of lane/line
   x = [point.x for point in line]
   y = [point.y for point in line]
   

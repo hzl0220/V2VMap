@@ -78,7 +78,11 @@ def draw_line(line, color=None, reference_line=False, label=""):
   #
   x = [point.x for point in line]
   y = [point.y for point in line]
+  
+  # get the ego UTM location
   ego_UTM = global_var.get_element_value("ego_UTM")
+  
+  # filter the key points far away from ego
   filtered_points = filter_points(ego_UTM, list(zip(x, y)))
   filtered_x, filtered_y = zip(*filtered_points)
   if reference_line:

@@ -107,7 +107,7 @@ def show(need_save=True, path=None):
   if need_save:
     buf = io.BytesIO()
     plt.savefig(buf, format='png', dpi=50)
-    plt.savefig(path) # save in disk
+    plt.savefig(path, dpi = 50) # save in disk
     buf.seek(0)
 
     # Create a PIL image object

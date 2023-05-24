@@ -20,7 +20,7 @@ import math
 import imap.global_var as global_var
 
 from imap.lib.common import shift_t, calc_length
-from imap.lib.draw import draw_line
+from imap.lib.draw import draw_line, draw_road
 
 from imap.lib.opendrive.common import convert_speed
 
@@ -231,11 +231,13 @@ class Lane:
     debug_mode = global_var.get_element_value("debug_mode")
     if not debug_mode:
       if self.lane_type == "driving":
-        draw_line(self.left_boundary, 'k')
-        draw_line(self.right_boundary, 'k')
+        draw_road(self.left_boundary, self.right_boundary)
+        draw_line(self.left_boundary)
+        draw_line(self.right_boundary)
       else:
-        draw_line(self.left_boundary, 'k')
-        draw_line(self.right_boundary, 'k')
+        draw_road(self.left_boundary, self.right_boundary)
+        draw_line(self.left_boundary)
+        draw_line(self.right_boundary)
     return self.right_boundary
 
   def generate_boundary_type(self, left_boundary_type) -> str:

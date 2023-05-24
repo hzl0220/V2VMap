@@ -30,7 +30,7 @@ from imap.lib.proto_utils import (
   write_pb_to_bin_file
 )
 
-from imap.lib.draw import draw_line, draw_ego, show
+from imap.lib.draw import show
 from imap.lib.convex_hull import convex_hull, aabb_box
 from imap.lib.proj_helper import latlon2utm
 
@@ -161,7 +161,7 @@ class Opendrive2Apollo(Convertor):
         ego_UTM = [self.origin_x, self.origin_y]
         global_var.set_element_value("ego_UTM", ego_UTM)
         # Draw ego vehicle
-        draw_ego(self.origin_x, self.origin_y)
+        # draw_ego(self.origin_x, self.origin_y)
   
 
   def convert_header(self):
@@ -609,7 +609,6 @@ class Opendrive2Apollo(Convertor):
     # Todo(zero): display xodr map
     if self.output_file_name is None:
       show(need_save=global_var.get_element_value("need_save_figure"), path=self.input_file_name.replace(".xodr", ".png"))
-
 
   def save_map(self):
     output_file_name = self.output_file_name

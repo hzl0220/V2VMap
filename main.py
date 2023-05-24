@@ -4,7 +4,7 @@ from pathlib import Path
 
 import imap.global_var as global_var
 
-from imap.lib.draw import add_editor, show_map
+# from imap.lib.draw import add_editor, show_map
 from imap.lib.convertor import Opendrive2Apollo
 
 

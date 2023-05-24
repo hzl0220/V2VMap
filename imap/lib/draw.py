@@ -1,123 +1,106 @@
-#!/usr/bin/env python
-
-# Copyright 2021 daohu527 <daohu527@gmail.com>
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, softbutton_press_eventware
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-
 import io
 import math
 
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from PIL import Image
+import cv2
 
 import imap.editor as editor
 import imap.global_var as global_var
 
 
-fig, ax = plt.subplots(figsize=(256/50, 256/50))
+CV2_SHIFT_VALUE = 2 ** 9
+image = np.zeros((256, 256, 3), np.uint8)
 
 def draw(hdmap, lane_id):
-  lane_ids = []
-  junction_ids = []
-  hdmap.draw_lanes(ax, lane_id)
-  hdmap.draw_junctions(ax, junction_ids)
-  hdmap.draw_signals(ax)
-  hdmap.draw_crosswalks(ax)
-  hdmap.draw_stop_signs(ax)
-  hdmap.draw_yields(ax)
+    lane_ids = [] 
+    junction_ids = []
+    hdmap.draw_lanes(ax, lane_id)
+    hdmap.draw_junctions(ax, junction_ids)
+    hdmap.draw_signals(ax)
+    hdmap.draw_crosswalks(ax)
+    hdmap.draw_stop_signs(ax)
+    hdmap.draw_yields(ax)
+
+
+def get_ego_UTM():
+    # Get the ego UTM location
+    ego_location = global_var.get_element_value("ego_UTM")
+    return ego_location
+
+
+def cv2_subpixel(coords: np.ndarray) -> np.ndarray:
+    """
+    Cast coordinates to numpy.int but keep fractional part by previously multiplying by 2**CV2_SHIFT
+    cv2 calls will use shift to restore original values with higher precision
+
+    Args:
+        coords (np.ndarray): XY coords as float
+
+    Returns:
+        np.ndarray: XY coords as int for cv2 shift draw
+    """
     
-def show_map(map_path, lane_id):
-  hdmap=Map()
-  hdmap.load(map_path)
-  draw(hdmap, lane_id)
-  # max windows
-  # manager=plt.get_current_fig_manager()
-  # manager.window.showMaximized()
-  # tight layout
-  # todo(zero): why tight layout not work?
-  plt.tight_layout()
-  plt.axis('equal')
-  plt.show()
+    coords = coords * CV2_SHIFT_VALUE
+    coords = coords.astype(np.int)
+    return coords
 
-def add_editor():
-  fig.canvas.mpl_connect('button_press_event', editor.on_click)
-  fig.canvas.mpl_connect('button_press_event', editor.on_press)
-  fig.canvas.mpl_connect('button_release_event', editor.on_release)
-  fig.canvas.mpl_connect('pick_event', editor.on_pick)
-  fig.canvas.mpl_connect('motion_notify_event', editor.on_motion)
 
-def calculate_distance(point1, point2):
-  delta_easting = point2[0] - point1[0]
-  delta_northing = point2[1] - point1[1]
-  distance = math.sqrt(delta_easting**2 + delta_northing**2)
-  return distance
+def normalize_points(x, y):
+    # Transform all the points that relatively to ego
+    ego_UTM = get_ego_UTM()
+    norm_x = [int(256/50 * (ego_UTM[0] - _x)) + 128 for _x in x]
+    norm_y = [int(256/50 * (ego_UTM[1] - _y)) + 128 for _y in y]
+    return norm_x, norm_y
 
-def filter_points(ego, points):
-  # Filter the key points that longer than 50 meters form the ego car
-  filtered_points = []
-  for point in points:
-      distance = calculate_distance(ego, point)
-      if distance <= 25: # ego at center, so the resolution should be 256/50
-          filtered_points.append(point)
-  return filtered_points
 
-def draw_line(line, color=None, reference_line=False, label=""):
-  # key points of lane/line
-  x = [point.x for point in line]
-  y = [point.y for point in line]
-  
-  # get the ego UTM location
-  ego_UTM = global_var.get_element_value("ego_UTM")
-  
-  # filter the key points far away from ego
-  filtered_points = filter_points(ego_UTM, list(zip(x, y)))
-  filtered_x, filtered_y = zip(*filtered_points)
-  if reference_line:
-    pass
-  else:
-    if color:
-      ax.plot(filtered_x, filtered_y, color, label = label)
-    else:
-      ax.plot(filtered_x, filtered_y, label = label)
+def draw_line(line, reference_line=False, label=""):
+    # key points of lane/line
+    x = [point.x for point in line]
+    y = [point.y for point in line]
+    norm_x, norm_y = normalize_points(x, y)
 
-def draw_ego(lat, lon, width = 3, height = 3):
-  lat = lat - (width / 2)
-  lon = lon - (height / 2)
-  rect = patches.Rectangle((lat, lon), width, height, linewidth=0.1,  facecolor='green', angle = 0)
+    color = (0, 255, 0)  # Green color
+    thickness = 2
+    
+    # Draw each key points
+    for point in list(zip(norm_x, norm_y)):
+        cv2.circle(image, point, thickness, color, -1)
 
-  ax.add_patch(rect)
+    # Draw ego vehicle
+    cv2.circle(image, (128, 128), 6, (255, 255, 0), -1)
+
+
+def draw_road(left_boundary, right_boundary, vis=False):
+    # Draw road surface represented by polygon
+    color = (0, 0, 0) if vis else (0, 120, 255)
+
+    left_x = [point.x for point in left_boundary]
+    left_y = [point.y for point in left_boundary]
+    norm_left_x, norm_left_y = normalize_points(left_x, left_y)
+    
+    right_x = [point.x for point in right_boundary]
+    right_y = [point.y for point in right_boundary]
+    norm_right_x, norm_right_y = normalize_points(right_x, right_y)
+
+    left_points = list(zip(norm_left_x, norm_left_y))
+    right_points = list(zip(norm_right_x, norm_right_y))
+    
+    lane_area_list = np.array(left_points + right_points[::-1], np.int32)
+    # print(lane_area_list)
+
+    for lane_area in lane_area_list:
+        lane_area = lane_area.reshape(-1, 2)
+    cv2.fillPoly(image, [lane_area_list], color)
+
 
 def show(need_save=True, path=None):
-  ax.axis('equal')
-  plt.axis('off')
-  
-  if need_save:
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=50)
-    plt.savefig(path, dpi = 50) # save in disk
-    buf.seek(0)
+    # show
+    cv2.imshow("Image", image)
 
-    # Create a PIL image object
-    img = Image.open(buf)
-
-    # Convert the image object to a numpy array
-    img_array = np.array(img)
+    if need_save is not None:
+        cv2.imwrite(path, image)
+        print(f"Image saved as {path}")
 
     # img_arry shape:
-    print("Saved Successfully: ", path)
-    print("nparray size: ", img_array.shape)
-
-  plt.show()
+    # print("Saved Successfully: ", path)
+    # print("nparray size: ", img_array.shape)

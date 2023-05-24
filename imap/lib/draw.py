@@ -8,8 +8,8 @@ import imap.editor as editor
 import imap.global_var as global_var
 
 
-CV2_SHIFT_VALUE = 2 ** 9
 image = np.zeros((256, 256, 3), np.uint8)
+
 
 def draw(hdmap, lane_id):
     lane_ids = [] 

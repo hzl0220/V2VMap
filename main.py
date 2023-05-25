@@ -26,7 +26,6 @@ if map is not None:
     global_var.set_element_value("need_save_figure", True)
     show_open_drive_map(map)
     
-
 else:
     # logging.error("File not exist! '{}'".format(file_path))
     pass

@@ -4,7 +4,6 @@ import math
 import numpy as np
 import cv2
 
-import imap.editor as editor
 import imap.global_var as global_var
 
 
@@ -26,23 +25,6 @@ def get_ego_UTM():
     # Get the ego UTM location
     ego_location = global_var.get_element_value("ego_UTM")
     return ego_location
-
-
-def cv2_subpixel(coords: np.ndarray) -> np.ndarray:
-    """
-    Cast coordinates to numpy.int but keep fractional part by previously multiplying by 2**CV2_SHIFT
-    cv2 calls will use shift to restore original values with higher precision
-
-    Args:
-        coords (np.ndarray): XY coords as float
-
-    Returns:
-        np.ndarray: XY coords as int for cv2 shift draw
-    """
-    
-    coords = coords * CV2_SHIFT_VALUE
-    coords = coords.astype(np.int)
-    return coords
 
 
 def normalize_points(x, y):

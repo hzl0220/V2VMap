@@ -155,6 +155,7 @@ class Opendrive2Apollo(Convertor):
           "+datum=WGS84 +units=m +no_defs".format(0)
       else:
         self.origin_x, self.origin_y, zone_id = latlon2utm(lat, lon)
+        print("ego GPS: ", lat, lon)
         print("ego UTM: ", self.origin_x, self.origin_y)
         self.pb_map.header.projection.proj = "+proj=utm +zone={} +ellps=WGS84 " \
           "+datum=WGS84 +units=m +no_defs".format(zone_id)
@@ -606,7 +607,6 @@ class Opendrive2Apollo(Convertor):
     self.convert_roads()
     self.convert_junctions()
 
-    # Todo(zero): display xodr map
     if self.output_file_name is None:
       show(need_save=global_var.get_element_value("need_save_figure"), path=self.input_file_name.replace(".xodr", ".png"))
 

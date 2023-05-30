@@ -1,10 +1,10 @@
+import os
 import sys
+import glob
 import logging
 from pathlib import Path
 
 import imap.global_var as global_var
-
-# from imap.lib.draw import add_editor, show_map
 from imap.lib.convertor import Opendrive2Apollo
 
 
@@ -19,14 +19,16 @@ global_var.set_element_value("debug_mode", False)
 global_var.set_element_value("enable_z_axis", False)
 
 
-map = sys.argv[1]
+map_dir = sys.argv[1]
 
-if map is not None:
-    map_file = Path(map)
-    global_var.set_element_value("need_save_figure", True)
-    show_open_drive_map(map)
-    
+if map_dir is not None:
+    # Get a list of all .xodr files in the specified directory
+    map_files = glob.glob(os.path.join(map_dir, '*.xodr'))
+
+    for map_file in map_files:
+        global_var.set_element_value("need_save_figure", True)
+        show_open_drive_map(map_file)
+
 else:
-    # logging.error("File not exist! '{}'".format(file_path))
-    pass
+    logging.error("Directory not provided or does not exist.")
 

@@ -1,4 +1,5 @@
 import os
+import glob
 import math
 
 from lxml import etree
@@ -6,47 +7,12 @@ import xml.etree.ElementTree as ET
 import numpy as np
 
 
-def get_tf_matrix(source_frame, target_frame):
+def get_tf_matrix(source_frame, target_frame): ## FIXed Buggy Tf obtained
     source_frame = np.loadtxt(source_frame, delimiter=",")
     target_frame = np.loadtxt(target_frame, delimiter=",")
+    source_inv = np.linalg.inv(source_frame)
     target_inv = np.linalg.inv(target_frame)
-    return np.dot(source_frame, target_inv)
-
-def transform_XODR(xodr_file, transform_matrix):
-    # Parse the XML file and get the root element
-    root = ET.parse(xodr_file).getroot()
-
-    # Loop over each road element in the map and transform its position and orientation
-    for road in root.iter("geometry"):
-        # Transfer the origin
-        origin = np.array([0.0, 0.0, 0.0, 1.0])
-        transformed_origin = np.dot(transform_matrix, origin)
-        o_x, o_y, o_z, _ = transformed_origin
-
-        # Transform the road's position
-        road_position = np.array([float(road.attrib["x"]), float(road.attrib["y"]), 0.0, 1.0])
-        transformed_position = np.dot(transform_matrix, road_position)
-        transformed_position -= transformed_origin
-
-        road.attrib["x"] = str(transformed_position[0])
-        road.attrib["y"] = str(transformed_position[1])
-
-        # Transform the road's orientation    
-        direction_vector = np.array([math.cos(float(road.attrib["hdg"])), math.sin(float(road.attrib["hdg"])), 0])
-        transformed_vector = transform_matrix.dot(np.append(direction_vector, 0))[:3] # np.array([direction_vector, 0])[:3]
-        transformed_heading_angle = math.atan2(transformed_vector[1], transformed_vector[0])
-
-        road.attrib["hdg"] = str(transformed_heading_angle)
-
-    
-    output_path = os.path.dirname(xodr_file) + "/transformed_" + os.path.basename(xodr_file)
-    output_xodr = output_path
-
-    tree = ET.ElementTree(root)
-    tree.write(output_xodr, encoding="UTF-8", xml_declaration=True)
-    reorder_attributes(output_xodr)
-    print("Transfered map saved in:", "\n", output_path)
-    return output_xodr
+    return np.dot(target_inv, source_frame)
 
 
 def reorder_attributes(xml_file):
@@ -135,10 +101,80 @@ def reorder_attributes(xml_file):
         etree.ElementTree(root).write(xml_file, pretty_print=True, xml_declaration=True)
 
 
-xodr_map = '/home/joyboy/V2VMap/Test/Exports/test_map_30frames.xodr'
-source_tf = '/home/joyboy/V2VMap/testoutput_CAV_data_2022-03-15-09-54-40_0_astuff/tf/000000.txt'
-target_tf = '/home/joyboy/V2VMap/testoutput_CAV_data_2022-03-15-09-54-40_0_astuff/tf/000015.txt'
+def transform_XODR(xodr_file, source_frame, target_frame, gps_path):
+    xodr_name = os.path.basename(xodr_file) # with extension
+    target_frame_name = os.path.basename(target_frame) # with extention
+    target_name = os.path.splitext(target_frame_name)[0]
 
-tf = get_tf_matrix(source_tf, target_tf)
-transformed_map = transform_XODR(xodr_map, tf)
+    # Parse the XML file and get the root element
+    root = ET.parse(xodr_file).getroot()
+
+    transferred_coords_file = gps_path + '/' + target_name + ".txt"
+    with open(transferred_coords_file, "r") as f:
+        transferred_coords = f.readline().strip().split(",")
+
+    # Update the latitude and longitude values in the <geoReference> header
+    geo_ref = root.find(".//geoReference")
+    if geo_ref is not None:
+        cdata = geo_ref.text.strip()
+        parts = cdata.split(" ")
+        for i in range(len(parts)):
+            if parts[i].startswith("+lat_0="):
+                parts[i] = "+lat_0=" + transferred_coords[0]
+            elif parts[i].startswith("+lon_0="):
+                parts[i] = "+lon_0=" + transferred_coords[1]
+        geo_ref.text = " ".join(parts)
+
+    # Loop over each road element in the map and transform its position and orientation
+    for road in root.iter("geometry"):
+        transform_matrix = get_tf_matrix(source_frame, target_frame)
+        # Transform the road's position
+        road_position = np.array([float(road.attrib["x"]), float(road.attrib["y"]), 0.0, 1.0])
+        transformed_position = np.dot(transform_matrix, road_position)
+
+        road.attrib["x"] = str(transformed_position[0])
+        road.attrib["y"] = str(transformed_position[1])
+
+        # Transform the road's orientation    
+        direction_vector = np.array([math.cos(float(road.attrib["hdg"])), math.sin(float(road.attrib["hdg"])), 0])
+        transformed_vector = transform_matrix.dot(np.append(direction_vector, 0))[:3] # np.array([direction_vector, 0])[:3]
+        transformed_heading_angle = math.atan2(transformed_vector[1], transformed_vector[0])
+
+        road.attrib["hdg"] = str(transformed_heading_angle)
+        
+    
+    output_path = os.path.dirname(xodr_file) + "/tf_" + os.path.splitext(target_frame_name)[0] \
+                    + ".xodr"
+                    
+    output_xodr = output_path
+
+    tree = ET.ElementTree(root)
+    tree.write(output_xodr, encoding="UTF-8", xml_declaration=True)
+    reorder_attributes(output_xodr)
+    print("Transfered map saved in: \n", output_path)
+    return output_xodr
+
+
+def transform_all_xodr(xodr_file, source_tf, tf_folder, gps_folder):
+    # Get the list of all transformation matrix files in the tf directory
+    target_tf_files = glob.glob(os.path.join(tf_folder, "*.txt"))
+    target_tf_files.sort()  # Ensure transformations are applied in order
+
+    # Keep track of the current transformed xodr file
+    current_xodr = xodr_file
+
+    # For each target_tf file
+    for target_tf in target_tf_files:
+        # Apply the transformation
+        #current_xodr = transform_XODR(current_xodr, source_tf, target_tf, gps_folder)
+        transform_XODR(current_xodr, source_tf, target_tf, gps_folder)
+        
+
+
+xodr_map = '/home/joyboy/V2VMap/Test/Exports/test_map_30frames/test_map_30frames.xodr'
+source_tf = '/home/joyboy/V2VMap/testoutput_CAV_data_2022-03-15-09-54-40_0_astuff/tf/000000.txt'
+tf_folder = '/home/joyboy/V2VMap/testoutput_CAV_data_2022-03-15-09-54-40_0_astuff/tf/'
+gps_folder = '/home/joyboy/V2VMap/testoutput_CAV_data_2022-03-15-09-54-40_0_astuff/gps'
+
+transform_all_xodr(xodr_map, source_tf, tf_folder, gps_folder)
 

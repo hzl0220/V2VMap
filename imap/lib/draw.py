@@ -70,7 +70,6 @@ def draw_road(left_boundary, right_boundary, vis=False):
     right_points = list(zip(norm_right_y, norm_right_x))
     
     lane_area_list = np.array(left_points + right_points[::-1], np.int32)
-    # print(lane_area_list)
 
     for lane_area in lane_area_list:
         lane_area = lane_area.reshape(-1, 2)

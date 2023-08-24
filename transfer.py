@@ -151,7 +151,7 @@ def transform_XODR(xodr_file, source_frame, target_frame, gps_path):
     tree = ET.ElementTree(root)
     tree.write(output_xodr, encoding="UTF-8", xml_declaration=True)
     reorder_attributes(output_xodr)
-    print("Transfered map saved in: \n", output_path)
+    print("Transfered map saved in: \n", output_path, '\n')
     return output_xodr
 
 
@@ -171,7 +171,8 @@ def transform_all_xodr(xodr_file, source_tf, tf_folder, gps_folder):
         
 
 
-xodr_map = '/home/joyboy/V2VMap/Test/Exports/test_map_30frames/test_map_30frames.xodr'
+# xodr_map = '/home/joyboy/V2VMap/Test/Exports/test_map_30frames/test_map_30frames.xodr'
+xodr_map = '/home/joyboy/V2VMap/Test/Exports/test_cross_fake/test_cross.xodr'
 source_tf = '/home/joyboy/V2VMap/testoutput_CAV_data_2022-03-15-09-54-40_0_astuff/tf/000000.txt'
 tf_folder = '/home/joyboy/V2VMap/testoutput_CAV_data_2022-03-15-09-54-40_0_astuff/tf/'
 gps_folder = '/home/joyboy/V2VMap/testoutput_CAV_data_2022-03-15-09-54-40_0_astuff/gps'

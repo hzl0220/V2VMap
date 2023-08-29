@@ -40,6 +40,9 @@ STOP_LINE_DISTANCE = 1.0
 
 
 def to_pb_lane_type(open_drive_type):
+  if open_drive_type is None:
+    return map_lane_pb2.Lane.NONE
+
   lower_type = open_drive_type.lower()
   if lower_type == 'none':
     return map_lane_pb2.Lane.NONE
@@ -72,6 +75,9 @@ def to_pb_lane_type(open_drive_type):
   elif lower_type == 'offRamp':    # not support
     return map_lane_pb2.Lane.NONE
   elif lower_type == 'connectingRamp': # not support
+    return map_lane_pb2.Lane.NONE
+  else:
+    logging.info("Unsupported lane type: {}".format(open_drive_type))
     return map_lane_pb2.Lane.NONE
 
 def to_pb_boundary_type(opendrive_boundary_type):
@@ -161,9 +167,6 @@ class Opendrive2Apollo(Convertor):
           "+datum=WGS84 +units=m +no_defs".format(zone_id)
         ego_UTM = [self.origin_x, self.origin_y]
         global_var.set_element_value("ego_UTM", ego_UTM)
-        # Draw ego vehicle
-        # draw_ego(self.origin_x, self.origin_y)
-  
 
   def convert_header(self):
     if self.xodr_map.header.version:
@@ -197,8 +200,13 @@ class Opendrive2Apollo(Convertor):
         idx, lane.lane_id)
     pb_lane.type = to_pb_lane_type(lane.lane_type)
     pb_lane.length = lane.length
+    # Lane speed first, then road, and finally the default 120km/h
     if lane.speed.max_v:
       pb_lane.speed_limit = lane.speed.max_v
+    elif xodr_road.road_type.speed.max_speed:
+      pb_lane.speed_limit = xodr_road.road_type.speed.max_speed
+    else:
+      pb_lane.speed_limit = 33.3
     pb_lane.direction = map_lane_pb2.Lane.FORWARD
 
 
@@ -207,6 +215,7 @@ class Opendrive2Apollo(Convertor):
     segment = pb_lane.left_boundary.curve.segment.add()
     for point3d in lane.left_boundary:
       point = segment.line_segment.point.add()
+      # lhd 2022/12/03 for 3D view
       if global_var.get_element_value("enable_z_axis"):
         point.x, point.y, point.z = point3d.x, point3d.y, point3d.z
       else:
@@ -226,6 +235,7 @@ class Opendrive2Apollo(Convertor):
     segment = pb_lane.central_curve.segment.add()
     for point3d in lane.center_line:
       point = segment.line_segment.point.add()
+      # lhd 2022/12/03 for 3D view
       if global_var.get_element_value("enable_z_axis"):
         point.x, point.y, point.z = point3d.x, point3d.y, point3d.z
       else:
@@ -240,6 +250,7 @@ class Opendrive2Apollo(Convertor):
     segment = pb_lane.right_boundary.curve.segment.add()
     for point3d in lane.right_boundary:
       point = segment.line_segment.point.add()
+      # lhd 2022/12/03 for 3D view
       if global_var.get_element_value("enable_z_axis"):
         point.x, point.y, point.z = point3d.x, point3d.y, point3d.z
       else:
@@ -552,8 +563,8 @@ class Opendrive2Apollo(Convertor):
       xodr_road.add_offset_to_reference_line()
       xodr_road.add_origin_to_reference_line(self.origin_x, self.origin_y)
       # Todo(zero):
-      # draw_line(xodr_road.reference_line, 'r', [self.origin_x,self.origin_y], \
-      #   reference_line = False, label = "reference line " + str(pb_road.id.id))
+      # draw_line(xodr_road.reference_line, 'r', \
+      # reference_line = True, label = "reference line " + str(pb_road.id.id))
 
       xodr_road.process_lanes()
 
@@ -607,8 +618,10 @@ class Opendrive2Apollo(Convertor):
     self.convert_roads()
     self.convert_junctions()
 
+    # Todo(zero): display xodr map
     if self.output_file_name is None:
       show(need_save=global_var.get_element_value("need_save_figure"), path=self.input_file_name.replace(".xodr", ".png"))
+
 
   def save_map(self):
     output_file_name = self.output_file_name

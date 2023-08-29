@@ -54,9 +54,9 @@ def draw_line(line, reference_line=False, label=""):
     cv2.circle(image, (128, 128), 6, (255, 255, 0), -1)
 
 
-def draw_road(left_boundary, right_boundary, vis=False):
-    # Draw road surface represented by polygon
-    color = (0, 0, 0) if vis else (0, 120, 255)
+def draw_road(left_boundary, right_boundary):
+    # Draw road surfac
+    color = (0, 120, 255)
 
     left_x = [point.x for point in left_boundary]
     left_y = [point.y for point in left_boundary]
@@ -79,7 +79,7 @@ def draw_road(left_boundary, right_boundary, vis=False):
 def show(need_save=True, path=None):
     if need_save is not None:
         cv2.imwrite(path, image)
-        print(f"Image saved as {path} \n")
+        print(f"Image saved in {path} \n")
 
         # Reset the image (type global) to black
         image.fill(0)

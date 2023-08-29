@@ -232,8 +232,8 @@ class Lane:
     if not debug_mode:
       if self.lane_type == "driving":
         draw_road(self.left_boundary, self.right_boundary)
-        draw_line(self.left_boundary)
-        draw_line(self.right_boundary)
+        draw_line(self.left_boundary, 'g')
+        draw_line(self.right_boundary, 'r')
       else:
         draw_road(self.left_boundary, self.right_boundary)
         draw_line(self.left_boundary)
@@ -273,7 +273,7 @@ class LaneSection:
     left = raw_lane_section.find("left")
     if left is not None:
       for raw_lane in left.iter('lane'):
-        lane = Lane(direction = -1)
+        lane = Lane(direction = 1)
         lane.parse_from(raw_lane)
         self.add_left_lane(lane)
 
@@ -286,7 +286,7 @@ class LaneSection:
     right = raw_lane_section.find("right")
     if right is not None:
       for raw_lane in right.iter('lane'):
-        lane = Lane(direction = 1)
+        lane = Lane(direction = -1)
         lane.parse_from(raw_lane)
         self.add_right_lane(lane)
 
